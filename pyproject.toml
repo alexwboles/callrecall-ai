@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "callrecall-ai"
+version = "0.1.0"
+description = "Self-hosted voice-agent memory layer: per-contact caller briefs in one JSON file. Free, local, no cloud."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "TechPartner" }]
+keywords = ["voice-ai", "memory", "pipecat", "livekit", "call-center", "agents"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Communications :: Telephony",
+]
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+pipecat = ["pipecat-ai>=0.0.70"]
+dev = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://github.com/alexwboles/callrecall-ai"
+
+[tool.setuptools.packages.find]
+where = ["src"]

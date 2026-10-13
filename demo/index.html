@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>callrecall-ai — self-hosted voice-agent memory</title>
+<style>
+  :root{
+    --ink:#1a1a18; --paper:#fafaf7; --card:#ffffff; --line:#e4e4dc;
+    --accent:#0f766e; --accent-ink:#ffffff; --muted:#6b6b64; --code:#f2f2ec;
+  }
+  *{box-sizing:border-box; border-radius:0 !important;}
+  body{margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; line-height:1.55;}
+  .wrap{max-width:960px; margin:0 auto; padding:0 24px;}
+  header.top{border-bottom:3px solid var(--ink); padding:28px 0 20px;}
+  .brand{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-weight:700;
+    font-size:22px; letter-spacing:-0.5px;}
+  .brand .ai{color:var(--accent);}
+  .tag{color:var(--muted); font-size:14px; margin-top:4px;}
+  .hero{padding:48px 0 32px; display:grid; grid-template-columns:1.2fr 1fr; gap:32px;}
+  .hero h1{font-size:40px; line-height:1.1; margin:0 0 16px; letter-spacing:-1px;}
+  .hero h1 .u{border-bottom:4px solid var(--accent);}
+  .hero p{color:var(--muted); font-size:17px; margin:0 0 20px;}
+  .install{background:var(--ink); color:#f5f5f0; font-family:ui-monospace,Menlo,monospace;
+    padding:14px 18px; font-size:15px; display:flex; justify-content:space-between; align-items:center;}
+  .install button{background:var(--accent); color:var(--accent-ink); border:0;
+    font-family:inherit; font-size:13px; padding:8px 14px; cursor:pointer;}
+  .badges{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;}
+  .badge{border:1px solid var(--line); background:var(--card); font-size:12px;
+    padding:5px 10px; font-family:ui-monospace,Menlo,monospace; color:var(--muted);}
+  .panel{background:var(--card); border:1px solid var(--line); padding:0;}
+  .panel h3{margin:0; padding:12px 16px; border-bottom:1px solid var(--line);
+    font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted);}
+  .panel .body{padding:16px;}
+  .brief-line{font-family:ui-monospace,Menlo,monospace; font-size:13px; padding:6px 0;
+    border-bottom:1px dashed var(--line);}
+  .brief-line:last-child{border-bottom:0;}
+  .k{color:var(--accent); font-weight:700;}
+  section{margin:40px 0;}
+  h2{font-size:24px; letter-spacing:-0.5px; margin:0 0 8px;}
+  .sub{color:var(--muted); margin:0 0 20px;}
+  textarea{width:100%; min-height:170px; border:1px solid var(--line); background:var(--code);
+    font-family:ui-monospace,Menlo,monospace; font-size:13px; padding:12px; resize:vertical;}
+  .row{display:flex; gap:12px; margin-top:12px; flex-wrap:wrap; align-items:center;}
+  .btn{background:var(--accent); color:var(--accent-ink); border:0; padding:11px 22px;
+    font-size:14px; font-weight:600; cursor:pointer;}
+  .btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--ink);}
+  label.toggle{font-size:13px; color:var(--muted); display:flex; gap:6px; align-items:center;}
+  table{width:100%; border-collapse:collapse; font-size:14px; background:var(--card);}
+  th,td{text-align:left; padding:10px 14px; border:1px solid var(--line); vertical-align:top;}
+  th{background:var(--code); font-size:12px; text-transform:uppercase; letter-spacing:1px;}
+  td code, .mono{font-family:ui-monospace,Menlo,monospace; font-size:12.5px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:24px;}
+  pre{background:var(--ink); color:#f5f5f0; padding:16px; overflow:auto; font-size:13px;
+    font-family:ui-monospace,Menlo,monospace;}
+  footer{border-top:3px solid var(--ink); margin-top:56px; padding:20px 0 40px;
+    color:var(--muted); font-size:13px; display:flex; justify-content:space-between;}
+  @media(max-width:720px){ .hero,.grid2{grid-template-columns:1fr;} .hero h1{font-size:32px;} }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand">callrecall<span class="ai">-ai</span></div>
+  <div class="tag">Self-hosted voice-agent memory &middot; MIT &middot; one JSON file &middot; zero cloud</div>
+</div></header>
+
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <h1>Your voice agent should <span class="u">remember</span> the caller.</h1>
+      <p>Retell charges for per-contact call memory. callrecall-ai does it free and local: after every call it writes a structured brief &mdash; preferences, facts, open threads, resolved items &mdash; and injects it when they call back. PII redaction on by default.</p>
+      <div class="install"><span>$ pip install callrecall-ai</span><button onclick="navigator.clipboard.writeText('pip install callrecall-ai')">copy</button></div>
+      <div class="badges">
+        <span class="badge">python &ge; 3.9</span><span class="badge">zero runtime deps</span>
+        <span class="badge">pipecat adapter</span><span class="badge">livekit adapter</span><span class="badge">MIT</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Live brief &mdash; after one call</h3>
+      <div class="body" id="briefPreview">
+        <div class="brief-line"><span class="k">contact</span> +15551234567 &middot; Sam</div>
+        <div class="brief-line"><span class="k">preferences</span> prefers text updates</div>
+        <div class="brief-line"><span class="k">facts</span> issue: package never arrived &middot; order: 77881</div>
+        <div class="brief-line"><span class="k">open</span> promised follow-up: about the replacement</div>
+        <div class="brief-line"><span class="k">resolved</span> &mdash;</div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Try the extraction rules</h2>
+    <p class="sub">Browser simulation of the same deterministic rules the Python package runs &mdash; no LLM, no server. Toggle PII redaction to see what gets stored.</p>
+    <textarea id="tx">Agent: Thanks for calling Acme Shipping. How can I help?
+Caller: Hi, my package never arrived. My email is sam.rivera@example.com.
+Agent: What is your order number?
+Caller: It's order 77881. I'd like a replacement, and I prefer text updates.
+Agent: Let me check with the warehouse and I'll call you back about the replacement.</textarea>
+    <div class="row">
+      <button class="btn" onclick="runDemo()">Process call</button>
+      <button class="btn ghost" onclick="resetDemo()">Reset</button>
+      <label class="toggle"><input type="checkbox" id="redactToggle" checked> redact PII (default on)</label>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>Extracted brief</h3>
+      <div class="body" id="demoOut"><span style="color:var(--muted)">Press &ldquo;Process call&rdquo;&hellip;</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Drop it into Pipecat</h2>
+    <p class="sub">One processor between your user aggregator and the LLM &mdash; the slot the ecosystem already uses.</p>
+<pre>from callrecall import CallRecallMemory
+from callrecall.adapters import CallRecallPipecat
+
+mem = CallRecallMemory()  # ~/.callrecall/memory.json
+recall = CallRecallPipecat(mem, contact_id_fn=lambda f: f.caller_phone)
+
+pipeline = Pipeline([
+    transport.input(), stt, user_aggregator,
+    recall.processor(),   # <-- memory goes here
+    llm, assistant_aggregator, tts, transport.output(),
+])
+recall.on_call_end(caller_phone, transcript)  # when the call ends</pre>
+  </section>
+
+  <section>
+    <h2>Why not the alternatives</h2>
+    <table>
+      <tr><th></th><th>callrecall-ai</th><th>Mem0</th><th>Zep / Graphiti</th><th>Retell Memory</th></tr>
+      <tr><td>Price</td><td>free, self-hosted</td><td>free OSS / $19+ hosted</td><td>free OSS / hosted</td><td>paid, closed</td></tr>
+      <tr><td>Storage</td><td><b>one JSON file, human-readable</b></td><td>vector DB (opaque)</td><td>graph DB</td><td>closed</td></tr>
+      <tr><td>Voice-call shaped</td><td><b>briefs + skippable flow steps</b></td><td>generic</td><td>generic</td><td>yes</td></tr>
+      <tr><td>PII redaction default-on</td><td><b>yes</b></td><td>no</td><td>no</td><td>no</td></tr>
+      <tr><td>LLM required</td><td>no (optional hook)</td><td>yes</td><td>yes</td><td>yes</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>API</h2>
+    <table>
+      <tr><th>Method</th><th>What it does</th></tr>
+      <tr><td class="mono">record_call(contact_id, transcript, ...)</td><td>Extract a finished call into the contact's brief</td></tr>
+      <tr><td class="mono">brief(contact_id)</td><td>The structured brief, or <span class="mono">None</span> for new callers</td></tr>
+      <tr><td class="mono">context_block(contact_id)</td><td>Brief rendered as system-prompt text for injection</td></tr>
+      <tr><td class="mono">skippable(contact_id, steps)</td><td>Flow steps memory already covers (Retell's &ldquo;skip this node&rdquo;)</td></tr>
+      <tr><td class="mono">backfill(contact_id, transcripts)</td><td>Build a brief from a pile of old transcripts</td></tr>
+      <tr><td class="mono">search(query)</td><td>Keyword search across all briefs</td></tr>
+      <tr><td class="mono">forget(contact_id)</td><td>Delete a brief entirely</td></tr>
+    </table>
+  </section>
+</div>
+
+<footer><div class="wrap" style="display:flex;justify-content:space-between;width:100%">
+  <span>callrecall-ai &middot; MIT License</span><span>Built by TechPartner &middot; free and local, always</span>
+</div></footer>
+
+<script>
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+function redact(t){
+  return t.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,"[EMAIL]")
+          .replace(/(?:\+?1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)\d{3}[-.\s]?\d{4}/g,"[PHONE]")
+          .replace(/\b\d{3}-\d{2}-\d{4}\b/g,"[SSN]");
+}
+function runDemo(){
+  const raw = document.getElementById("tx").value;
+  const doRedact = document.getElementById("redactToggle").checked;
+  const text = doRedact ? redact(raw) : raw;
+  const prefs=[], facts=[], open=[], resolved=[];
+  const callerLines = text.split("\n").filter(l=>/^caller:/i.test(l)).map(l=>l.replace(/^caller:\s*/i,""));
+  const agentLines  = text.split("\n").filter(l=>/^agent:/i.test(l)).map(l=>l.replace(/^agent:\s*/i,""));
+  const seen = new Set();
+  const add=(arr,s)=>{ s=s.trim().replace(/\s+/g," "); if(s && !seen.has(s)){ seen.add(s); arr.push(s);} };
+  callerLines.forEach(l=>{
+    let m;
+    if(m=l.match(/i prefer ([^.,;!?]+)/i)) add(prefs,"prefers "+m[1].trim());
+    if(m=l.match(/my email is (\S+@\S+)/i)) add(facts,"email: "+m[1]);
+    if(m=l.match(/my (?:phone )?number is ([+\d][\d\s().-]{6,}\d)/i)) add(facts,"phone number: "+m[1].trim());
+    if(m=l.match(/order (?:number |#)?([A-Za-z0-9-]{4,})/i)) add(facts,"order: "+m[1]);
+    if(m=l.match(/my ([\w ]+?) (never arrived|was lost|is broken)/i)) add(facts,"issue: "+m[1].trim()+" "+m[2]);
+    if(/thanks,? that worked|all set|resolved/i.test(l)) add(resolved,"resolved: "+l.slice(0,80));
+  });
+  agentLines.forEach(l=>{
+    let m;
+    if(m=l.match(/(?:call you back|follow up|get back to you)([^.,;!?]*)/i))
+      add(open,"promised follow-up"+(m[1].trim()?": "+m[1].trim():""));
+    if(/what is your [^?]+\?$/i.test(l.trim())) add(open,"unanswered: "+l.trim().slice(0,80));
+  });
+  const row=(k,v)=>'<div class="brief-line"><span class="k">'+k+'</span> '+(v.length?esc(v.join(" &middot; ")):"&mdash;")+"</div>";
+  document.getElementById("demoOut").innerHTML =
+    row("preferences",prefs)+row("facts",facts)+row("open",open)+row("resolved",resolved);
+}
+function resetDemo(){ document.getElementById("demoOut").innerHTML='<span style="color:var(--muted)">Press &ldquo;Process call&rdquo;&hellip;</span>'; }
+</script>
+</body>
+</html>

@@ -4,113 +4,237 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>callrecall-ai — self-hosted voice-agent memory</title>
+<meta name="description" content="Free, self-hosted per-caller memory for voice agents. Record the call, inject the brief on callback, skip what's already known. Zero cloud, PII redaction on by default.">
 <style>
   :root{
-    --ink:#1a1a18; --paper:#fafaf7; --card:#ffffff; --line:#e4e4dc;
-    --accent:#0f766e; --accent-ink:#ffffff; --muted:#6b6b64; --code:#f2f2ec;
+    --red:#e02a3c; --red-deep:#b31e2e; --red-soft:#fdeef0;
+    --ink:#14161a; --ink2:#1e2229; --paper:#ffffff; --bg:#fafafa;
+    --line:#e4e4de; --line-strong:#c9c9c2;
+    --text:#1b1e22; --muted:#5d646e; --faint:#8b919a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
   }
   *{box-sizing:border-box; border-radius:0 !important;}
-  body{margin:0; background:var(--paper); color:var(--ink);
-    font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; line-height:1.55;}
-  .wrap{max-width:960px; margin:0 auto; padding:0 24px;}
-  header.top{border-bottom:3px solid var(--ink); padding:28px 0 20px;}
-  .brand{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-weight:700;
-    font-size:22px; letter-spacing:-0.5px;}
-  .brand .ai{color:var(--accent);}
-  .tag{color:var(--muted); font-size:14px; margin-top:4px;}
-  .hero{padding:48px 0 32px; display:grid; grid-template-columns:1.2fr 1fr; gap:32px;}
-  .hero h1{font-size:40px; line-height:1.1; margin:0 0 16px; letter-spacing:-1px;}
-  .hero h1 .u{border-bottom:4px solid var(--accent);}
-  .hero p{color:var(--muted); font-size:17px; margin:0 0 20px;}
-  .install{background:var(--ink); color:#f5f5f0; font-family:ui-monospace,Menlo,monospace;
-    padding:14px 18px; font-size:15px; display:flex; justify-content:space-between; align-items:center;}
-  .install button{background:var(--accent); color:var(--accent-ink); border:0;
-    font-family:inherit; font-size:13px; padding:8px 14px; cursor:pointer;}
-  .badges{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;}
-  .badge{border:1px solid var(--line); background:var(--card); font-size:12px;
-    padding:5px 10px; font-family:ui-monospace,Menlo,monospace; color:var(--muted);}
-  .panel{background:var(--card); border:1px solid var(--line); padding:0;}
-  .panel h3{margin:0; padding:12px 16px; border-bottom:1px solid var(--line);
-    font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted);}
-  .panel .body{padding:16px;}
-  .brief-line{font-family:ui-monospace,Menlo,monospace; font-size:13px; padding:6px 0;
-    border-bottom:1px dashed var(--line);}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--paper); color:var(--text);
+    font-family:var(--sans); font-size:15px; line-height:1.6;}
+  :focus-visible{outline:2px solid var(--red); outline-offset:2px;}
+  /* ---------- top bar ---------- */
+  .topbar{position:sticky; top:0; z-index:50; background:var(--ink); color:#fff;
+    border-bottom:3px solid var(--red);}
+  .topbar-in{max-width:1200px; margin:0 auto; padding:0 24px; height:58px;
+    display:flex; align-items:center; gap:28px;}
+  .brand{font-family:var(--mono); font-weight:700; font-size:17px; letter-spacing:-.02em;
+    color:#fff; text-decoration:none; white-space:nowrap;}
+  .brand .ai{color:var(--red);}
+  .top-links{display:flex; gap:4px; margin-left:auto; overflow-x:auto;}
+  .top-links a{color:#c7cdd7; text-decoration:none; font-size:13px; font-weight:600;
+    padding:8px 12px; white-space:nowrap;}
+  .top-links a:hover{color:#fff; background:var(--ink2);}
+  /* ---------- shell ---------- */
+  .shell{max-width:1200px; margin:0 auto; padding:0 24px; display:grid;
+    grid-template-columns:220px minmax(0,1fr); gap:40px; align-items:start;}
+  .sidenav{position:sticky; top:58px; padding:32px 0; display:flex; flex-direction:column; gap:2px;
+    max-height:calc(100vh - 58px); overflow-y:auto;}
+  .sidenav .nav-k{font-family:var(--mono); font-size:10.5px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--faint); margin-bottom:8px;}
+  .snav{color:var(--muted); text-decoration:none; font-size:13.5px; font-weight:550;
+    padding:7px 12px; border-left:3px solid transparent;}
+  .snav:hover{color:var(--ink);}
+  .snav.on{color:var(--red-deep); border-left-color:var(--red); font-weight:700;}
+  main{min-width:0; padding-bottom:40px;}
+  section{padding:44px 0 8px; scroll-margin-top:76px;}
+  .kicker{font-family:var(--mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--red-deep); margin-bottom:10px;}
+  h1{font-size:42px; line-height:1.08; letter-spacing:-.025em; margin:0 0 14px; max-width:640px;}
+  h1 .u{border-bottom:4px solid var(--red);}
+  h2{font-size:26px; letter-spacing:-.02em; margin:0 0 8px;}
+  .lede{color:var(--muted); font-size:16.5px; max-width:660px; margin:0 0 24px;}
+  /* ---------- quickstart steps ---------- */
+  .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:26px 0;}
+  .step{border:1px solid var(--line); border-top:3px solid var(--red); padding:16px 18px; background:var(--paper);}
+  .step .n{font-family:var(--mono); font-size:11px; font-weight:700; color:var(--red-deep);
+    letter-spacing:.12em; margin-bottom:8px;}
+  .step h3{margin:0 0 6px; font-size:15px;}
+  .step p{margin:0; font-size:13px; color:var(--muted);}
+  .step code{font-family:var(--mono); font-size:12px; background:#f2f2ee; padding:1px 6px;
+    border:1px solid var(--line);}
+  /* ---------- code / install ---------- */
+  .codeblock{background:var(--ink); color:#f2f4f6; margin:0;}
+  .codeblock .cb-head{display:flex; align-items:center; justify-content:space-between;
+    padding:10px 16px; border-bottom:1px solid #2a2f38;}
+  .codeblock .cb-title{font-family:var(--mono); font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:#9aa2ad;}
+  .copybtn{background:transparent; border:1px solid #3a414c; color:#dfe4ea; cursor:pointer;
+    font-family:var(--mono); font-size:12px; padding:5px 12px;}
+  .copybtn:hover{border-color:var(--red); color:#fff;}
+  .copybtn.done{border-color:var(--red); color:var(--red);}
+  .codeblock pre{margin:0; padding:16px 18px; overflow-x:auto; font-family:var(--mono); font-size:13px;
+    line-height:1.65;}
+  .install{display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background:var(--ink); color:#f2f4f6; font-family:var(--mono); font-size:14.5px;
+    padding:13px 8px 13px 18px; margin:20px 0;}
+  .install .copybtn{background:var(--red); border-color:var(--red); color:#fff; font-weight:700;}
+  .install .copybtn:hover{background:var(--red-deep);}
+  .badges{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;}
+  .badge{border:1px solid var(--line-strong); font-size:12px; padding:4px 10px;
+    font-family:var(--mono); color:var(--muted); background:var(--paper);}
+  /* ---------- brief panel ---------- */
+  .brief{background:var(--paper); border:1px solid var(--line); border-top:3px solid var(--red);}
+  .brief .b-head{padding:10px 16px; border-bottom:1px solid var(--line);
+    font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted);}
+  .brief .b-body{padding:6px 16px 12px;}
+  .brief-line{font-family:var(--mono); font-size:12.5px; padding:7px 0; border-bottom:1px dashed var(--line);}
   .brief-line:last-child{border-bottom:0;}
-  .k{color:var(--accent); font-weight:700;}
-  section{margin:40px 0;}
-  h2{font-size:24px; letter-spacing:-0.5px; margin:0 0 8px;}
-  .sub{color:var(--muted); margin:0 0 20px;}
-  textarea{width:100%; min-height:170px; border:1px solid var(--line); background:var(--code);
-    font-family:ui-monospace,Menlo,monospace; font-size:13px; padding:12px; resize:vertical;}
+  .k{color:var(--red-deep); font-weight:700;}
+  /* ---------- playground ---------- */
+  .play-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;}
+  .samples{display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
+  .sample-btn{border:1px solid var(--line-strong); background:var(--paper); color:var(--muted);
+    font-size:12.5px; font-weight:600; padding:7px 13px; cursor:pointer;}
+  .sample-btn.on{background:var(--ink); border-color:var(--ink); color:#fff;}
+  textarea{width:100%; min-height:220px; border:1px solid var(--line-strong); background:#fbfbfa;
+    font-family:var(--mono); font-size:12.5px; line-height:1.6; padding:12px 14px; resize:vertical; color:var(--text);}
+  textarea:focus{outline:none; border-color:var(--red);}
   .row{display:flex; gap:12px; margin-top:12px; flex-wrap:wrap; align-items:center;}
-  .btn{background:var(--accent); color:var(--accent-ink); border:0; padding:11px 22px;
-    font-size:14px; font-weight:600; cursor:pointer;}
-  .btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--ink);}
-  label.toggle{font-size:13px; color:var(--muted); display:flex; gap:6px; align-items:center;}
-  table{width:100%; border-collapse:collapse; font-size:14px; background:var(--card);}
-  th,td{text-align:left; padding:10px 14px; border:1px solid var(--line); vertical-align:top;}
-  th{background:var(--code); font-size:12px; text-transform:uppercase; letter-spacing:1px;}
-  td code, .mono{font-family:ui-monospace,Menlo,monospace; font-size:12.5px;}
-  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:24px;}
-  pre{background:var(--ink); color:#f5f5f0; padding:16px; overflow:auto; font-size:13px;
-    font-family:ui-monospace,Menlo,monospace;}
-  footer{border-top:3px solid var(--ink); margin-top:56px; padding:20px 0 40px;
-    color:var(--muted); font-size:13px; display:flex; justify-content:space-between;}
-  @media(max-width:720px){ .hero,.grid2{grid-template-columns:1fr;} .hero h1{font-size:32px;} }
+  .btn{background:var(--red); color:#fff; border:0; padding:11px 24px; font-size:14px;
+    font-weight:700; cursor:pointer;}
+  .btn:hover{background:var(--red-deep);}
+  .btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--line-strong);}
+  .btn.ghost:hover{border-color:var(--red);}
+  label.toggle{font-size:13px; color:var(--muted); display:flex; gap:8px; align-items:center; cursor:pointer;}
+  label.toggle input{width:16px; height:16px; accent-color:var(--red);}
+  /* ---------- tables ---------- */
+  .tscroll{overflow-x:auto; border:1px solid var(--line);}
+  table{width:100%; border-collapse:collapse; font-size:14px; background:var(--paper); min-width:640px;}
+  th,td{text-align:left; padding:11px 16px; border-bottom:1px solid var(--line); vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  th{background:#f6f6f3; font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
+    border-bottom:2px solid var(--ink);}
+  td code, .mono{font-family:var(--mono); font-size:12.5px;}
+  td.hl{font-weight:700;}
+  /* ---------- footer ---------- */
+  footer{border-top:3px solid var(--ink); margin-top:48px;}
+  .foot-in{max-width:1200px; margin:0 auto; padding:22px 24px 44px; color:var(--muted); font-size:13px;
+    display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+  @media(max-width:960px){
+    .shell{grid-template-columns:1fr;}
+    .sidenav{position:static; flex-direction:row; overflow-x:auto; padding:12px 0;
+      border-bottom:1px solid var(--line); max-height:none;}
+    .sidenav .nav-k{display:none;}
+    .snav{border-left:none; border-bottom:3px solid transparent; white-space:nowrap;}
+    .snav.on{border-bottom-color:var(--red);}
+    .steps{grid-template-columns:1fr;}
+    .play-grid{grid-template-columns:1fr;}
+    h1{font-size:32px;}
+    .top-links{display:none;}
+  }
+  @media(prefers-reduced-motion:reduce){ html{scroll-behavior:auto;} }
 </style>
 </head>
 <body>
-<header class="top"><div class="wrap">
-  <div class="brand">callrecall<span class="ai">-ai</span></div>
-  <div class="tag">Self-hosted voice-agent memory &middot; MIT &middot; one JSON file &middot; zero cloud</div>
+
+<header class="topbar"><div class="topbar-in">
+  <a class="brand" href="#quickstart">callrecall<span class="ai">-ai</span></a>
+  <nav class="top-links" aria-label="Sections">
+    <a href="#quickstart">Quickstart</a>
+    <a href="#try">Try it</a>
+    <a href="#pipecat">Pipecat</a>
+    <a href="#compare">Compare</a>
+    <a href="#api">API</a>
+  </nav>
 </div></header>
 
-<div class="wrap">
-  <div class="hero">
-    <div>
-      <h1>Your voice agent should <span class="u">remember</span> the caller.</h1>
-      <p>Retell charges for per-contact call memory. callrecall-ai does it free and local: after every call it writes a structured brief &mdash; preferences, facts, open threads, resolved items &mdash; and injects it when they call back. PII redaction on by default.</p>
-      <div class="install"><span>$ pip install callrecall-ai</span><button onclick="navigator.clipboard.writeText('pip install callrecall-ai')">copy</button></div>
+<div class="shell">
+  <nav class="sidenav" aria-label="On this page">
+    <div class="nav-k">On this page</div>
+    <a class="snav on" href="#quickstart">Quickstart</a>
+    <a class="snav" href="#try">Try the extraction</a>
+    <a class="snav" href="#pipecat">Pipecat adapter</a>
+    <a class="snav" href="#compare">Why not alternatives</a>
+    <a class="snav" href="#api">API reference</a>
+  </nav>
+
+  <main>
+    <section id="quickstart">
+      <div class="kicker">Self-hosted voice-agent memory &middot; MIT &middot; zero cloud</div>
+      <h1>Give your voice agent a <span class="u">memory</span> in five minutes.</h1>
+      <p class="lede">Retell charges for per-contact call memory. callrecall-ai does it free and
+      local: after every call it writes a structured brief &mdash; preferences, facts, open
+      threads, resolved items &mdash; and injects it when the caller rings back.
+      PII redaction is on by default.</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="n">STEP 1</div>
+          <h3>Install</h3>
+          <p>Zero runtime dependencies. Python &ge; 3.9.</p>
+        </div>
+        <div class="step">
+          <div class="n">STEP 2</div>
+          <h3>Record the call</h3>
+          <p><code>record_call()</code> extracts a brief from the transcript and appends it to one JSON file.</p>
+        </div>
+        <div class="step">
+          <div class="n">STEP 3</div>
+          <h3>Inject on callback</h3>
+          <p><code>context_block()</code> renders the brief as system-prompt text at session start.</p>
+        </div>
+      </div>
+
+      <div class="install"><span>$ pip install callrecall-ai</span><button class="copybtn" data-copy="pip install callrecall-ai">copy</button></div>
       <div class="badges">
         <span class="badge">python &ge; 3.9</span><span class="badge">zero runtime deps</span>
-        <span class="badge">pipecat adapter</span><span class="badge">livekit adapter</span><span class="badge">MIT</span>
+        <span class="badge">pipecat adapter</span><span class="badge">livekit adapter</span>
+        <span class="badge">one JSON file</span><span class="badge">MIT</span>
       </div>
-    </div>
-    <div class="panel">
-      <h3>Live brief &mdash; after one call</h3>
-      <div class="body" id="briefPreview">
-        <div class="brief-line"><span class="k">contact</span> +15551234567 &middot; Sam</div>
-        <div class="brief-line"><span class="k">preferences</span> prefers text updates</div>
-        <div class="brief-line"><span class="k">facts</span> issue: package never arrived &middot; order: 77881</div>
-        <div class="brief-line"><span class="k">open</span> promised follow-up: about the replacement</div>
-        <div class="brief-line"><span class="k">resolved</span> &mdash;</div>
+
+      <div class="brief" style="margin-top:28px">
+        <div class="b-head">Live brief &mdash; after one call</div>
+        <div class="b-body">
+          <div class="brief-line"><span class="k">contact</span> +15551234567 &middot; Sam</div>
+          <div class="brief-line"><span class="k">preferences</span> prefers text updates</div>
+          <div class="brief-line"><span class="k">facts</span> issue: package never arrived &middot; order: 77881</div>
+          <div class="brief-line"><span class="k">open</span> promised follow-up: about the replacement</div>
+          <div class="brief-line"><span class="k">resolved</span> &mdash;</div>
+        </div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <section>
-    <h2>Try the extraction rules</h2>
-    <p class="sub">Browser simulation of the same deterministic rules the Python package runs &mdash; no LLM, no server. Toggle PII redaction to see what gets stored.</p>
-    <textarea id="tx">Agent: Thanks for calling Acme Shipping. How can I help?
-Caller: Hi, my package never arrived. My email is sam.rivera@example.com.
-Agent: What is your order number?
-Caller: It's order 77881. I'd like a replacement, and I prefer text updates.
-Agent: Let me check with the warehouse and I'll call you back about the replacement.</textarea>
-    <div class="row">
-      <button class="btn" onclick="runDemo()">Process call</button>
-      <button class="btn ghost" onclick="resetDemo()">Reset</button>
-      <label class="toggle"><input type="checkbox" id="redactToggle" checked> redact PII (default on)</label>
-    </div>
-    <div class="panel" style="margin-top:16px">
-      <h3>Extracted brief</h3>
-      <div class="body" id="demoOut"><span style="color:var(--muted)">Press &ldquo;Process call&rdquo;&hellip;</span></div>
-    </div>
-  </section>
+    <section id="try">
+      <div class="kicker">Interactive sandbox</div>
+      <h2>Try the extraction rules</h2>
+      <p class="lede">A browser simulation of the same deterministic rules the Python package
+      runs &mdash; no LLM, no server. Pick a sample call, toggle PII redaction, and watch
+      what gets stored.</p>
+      <div class="samples" role="group" aria-label="Sample transcripts">
+        <button class="sample-btn on" data-sample="0">Sample 1 &mdash; lost package</button>
+        <button class="sample-btn" data-sample="1">Sample 2 &mdash; billing callback</button>
+      </div>
+      <div class="play-grid">
+        <div>
+          <textarea id="tx" aria-label="Call transcript"></textarea>
+          <div class="row">
+            <button class="btn" id="btn-run">Process call</button>
+            <button class="btn ghost" id="btn-reset">Reset</button>
+            <label class="toggle"><input type="checkbox" id="redactToggle" checked> redact PII (default on)</label>
+          </div>
+        </div>
+        <div class="brief">
+          <div class="b-head">Extracted brief</div>
+          <div class="b-body" id="demoOut"><span style="color:var(--muted)">Press &ldquo;Process call&rdquo;&hellip;</span></div>
+        </div>
+      </div>
+    </section>
 
-  <section>
-    <h2>Drop it into Pipecat</h2>
-    <p class="sub">One processor between your user aggregator and the LLM &mdash; the slot the ecosystem already uses.</p>
-<pre>from callrecall import CallRecallMemory
+    <section id="pipecat">
+      <div class="kicker">Integration</div>
+      <h2>Drop it into Pipecat</h2>
+      <p class="lede">One processor between your user aggregator and the LLM &mdash; the slot the
+      ecosystem already uses.</p>
+      <div class="codeblock">
+        <div class="cb-head"><span class="cb-title">pipeline.py</span><button class="copybtn" data-copy-src="pipecat-code">copy</button></div>
+<pre id="pipecat-code">from callrecall import CallRecallMemory
 from callrecall.adapters import CallRecallPipecat
 
 mem = CallRecallMemory()  # ~/.callrecall/memory.json
@@ -118,79 +242,144 @@ recall = CallRecallPipecat(mem, contact_id_fn=lambda f: f.caller_phone)
 
 pipeline = Pipeline([
     transport.input(), stt, user_aggregator,
-    recall.processor(),   # <-- memory goes here
+    recall.processor(),   # &lt;-- memory goes here
     llm, assistant_aggregator, tts, transport.output(),
 ])
 recall.on_call_end(caller_phone, transcript)  # when the call ends</pre>
-  </section>
+      </div>
+    </section>
 
-  <section>
-    <h2>Why not the alternatives</h2>
-    <table>
-      <tr><th></th><th>callrecall-ai</th><th>Mem0</th><th>Zep / Graphiti</th><th>Retell Memory</th></tr>
-      <tr><td>Price</td><td>free, self-hosted</td><td>free OSS / $19+ hosted</td><td>free OSS / hosted</td><td>paid, closed</td></tr>
-      <tr><td>Storage</td><td><b>one JSON file, human-readable</b></td><td>vector DB (opaque)</td><td>graph DB</td><td>closed</td></tr>
-      <tr><td>Voice-call shaped</td><td><b>briefs + skippable flow steps</b></td><td>generic</td><td>generic</td><td>yes</td></tr>
-      <tr><td>PII redaction default-on</td><td><b>yes</b></td><td>no</td><td>no</td><td>no</td></tr>
-      <tr><td>LLM required</td><td>no (optional hook)</td><td>yes</td><td>yes</td><td>yes</td></tr>
-    </table>
-  </section>
+    <section id="compare">
+      <div class="kicker">Positioning</div>
+      <h2>Why not the alternatives</h2>
+      <p class="lede">Memory layers exist. None are free, voice-call-shaped, and redacted by default.</p>
+      <div class="tscroll"><table>
+        <tr><th></th><th>callrecall-ai</th><th>Mem0</th><th>Zep / Graphiti</th><th>Retell Memory</th></tr>
+        <tr><td>Price</td><td class="hl">free, self-hosted</td><td>free OSS / $19+ hosted</td><td>free OSS / hosted</td><td>paid, closed</td></tr>
+        <tr><td>Storage</td><td class="hl">one JSON file, human-readable</td><td>vector DB (opaque)</td><td>graph DB</td><td>closed</td></tr>
+        <tr><td>Voice-call shaped</td><td class="hl">briefs + skippable flow steps</td><td>generic</td><td>generic</td><td>yes</td></tr>
+        <tr><td>PII redaction default-on</td><td class="hl">yes</td><td>no</td><td>no</td><td>no</td></tr>
+        <tr><td>LLM required</td><td class="hl">no (optional hook)</td><td>yes</td><td>yes</td><td>yes</td></tr>
+      </table></div>
+    </section>
 
-  <section>
-    <h2>API</h2>
-    <table>
-      <tr><th>Method</th><th>What it does</th></tr>
-      <tr><td class="mono">record_call(contact_id, transcript, ...)</td><td>Extract a finished call into the contact's brief</td></tr>
-      <tr><td class="mono">brief(contact_id)</td><td>The structured brief, or <span class="mono">None</span> for new callers</td></tr>
-      <tr><td class="mono">context_block(contact_id)</td><td>Brief rendered as system-prompt text for injection</td></tr>
-      <tr><td class="mono">skippable(contact_id, steps)</td><td>Flow steps memory already covers (Retell's &ldquo;skip this node&rdquo;)</td></tr>
-      <tr><td class="mono">backfill(contact_id, transcripts)</td><td>Build a brief from a pile of old transcripts</td></tr>
-      <tr><td class="mono">search(query)</td><td>Keyword search across all briefs</td></tr>
-      <tr><td class="mono">forget(contact_id)</td><td>Delete a brief entirely</td></tr>
-    </table>
-  </section>
+    <section id="api">
+      <div class="kicker">Reference</div>
+      <h2>API</h2>
+      <p class="lede">Seven methods. The whole surface.</p>
+      <div class="tscroll"><table>
+        <tr><th>Method</th><th>What it does</th></tr>
+        <tr><td class="mono">record_call(contact_id, transcript, ...)</td><td>Extract a finished call into the contact's brief</td></tr>
+        <tr><td class="mono">brief(contact_id)</td><td>The structured brief, or <span class="mono">None</span> for new callers</td></tr>
+        <tr><td class="mono">context_block(contact_id)</td><td>Brief rendered as system-prompt text for injection</td></tr>
+        <tr><td class="mono">skippable(contact_id, steps)</td><td>Flow steps memory already covers (Retell's &ldquo;skip this node&rdquo;)</td></tr>
+        <tr><td class="mono">backfill(contact_id, transcripts)</td><td>Build a brief from a pile of old transcripts</td></tr>
+        <tr><td class="mono">search(query)</td><td>Keyword search across all briefs</td></tr>
+        <tr><td class="mono">forget(contact_id)</td><td>Delete a brief entirely</td></tr>
+      </table></div>
+    </section>
+  </main>
 </div>
 
-<footer><div class="wrap" style="display:flex;justify-content:space-between;width:100%">
-  <span>callrecall-ai &middot; MIT License</span><span>Built by TechPartner &middot; free and local, always</span>
+<footer><div class="foot-in">
+  <span>callrecall-ai &middot; MIT License</span><span>Free and local, always &middot; docs in README.md</span>
 </div></footer>
 
 <script>
-function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+"use strict";
+var SAMPLES = [
+"Agent: Thanks for calling Acme Shipping. How can I help?\nCaller: Hi, my package never arrived. My email is sam.rivera@example.com.\nAgent: What is your order number?\nCaller: It's order 77881. I'd like a replacement, and I prefer text updates.\nAgent: Let me check with the warehouse and I'll call you back about the replacement.",
+"Agent: Thanks for calling Northwind Support. How can I help?\nCaller: Hi, it's Maya. I'm calling about my bill — I was charged twice last month.\nAgent: I see the duplicate charge. I'll reverse the second one now.\nCaller: Thanks, that's resolved. My number is 555-014-2288 if you need it.\nCaller: And please — morning callbacks only, never after 6pm.\nAgent: Noted. I'll follow up tomorrow about the refund."
+];
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
 function redact(t){
   return t.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,"[EMAIL]")
           .replace(/(?:\+?1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)\d{3}[-.\s]?\d{4}/g,"[PHONE]")
           .replace(/\b\d{3}-\d{2}-\d{4}\b/g,"[SSN]");
 }
 function runDemo(){
-  const raw = document.getElementById("tx").value;
-  const doRedact = document.getElementById("redactToggle").checked;
-  const text = doRedact ? redact(raw) : raw;
-  const prefs=[], facts=[], open=[], resolved=[];
-  const callerLines = text.split("\n").filter(l=>/^caller:/i.test(l)).map(l=>l.replace(/^caller:\s*/i,""));
-  const agentLines  = text.split("\n").filter(l=>/^agent:/i.test(l)).map(l=>l.replace(/^agent:\s*/i,""));
-  const seen = new Set();
-  const add=(arr,s)=>{ s=s.trim().replace(/\s+/g," "); if(s && !seen.has(s)){ seen.add(s); arr.push(s);} };
-  callerLines.forEach(l=>{
-    let m;
+  var raw = document.getElementById("tx").value;
+  var doRedact = document.getElementById("redactToggle").checked;
+  var text = doRedact ? redact(raw) : raw;
+  var prefs=[], facts=[], open=[], resolved=[];
+  var callerLines = text.split("\n").filter(function(l){return /^caller:/i.test(l);})
+    .map(function(l){return l.replace(/^caller:\s*/i,"");});
+  var agentLines = text.split("\n").filter(function(l){return /^agent:/i.test(l);})
+    .map(function(l){return l.replace(/^agent:\s*/i,"");});
+  var seen = {};
+  function add(arr,s){ s=s.trim().replace(/\s+/g," "); if(s && !seen[s]){ seen[s]=1; arr.push(s);} }
+  callerLines.forEach(function(l){
+    var m;
     if(m=l.match(/i prefer ([^.,;!?]+)/i)) add(prefs,"prefers "+m[1].trim());
+    if(m=l.match(/morning callbacks only([^.,;!?]*)/i)) add(prefs,"prefers morning callbacks"+m[1].trim());
     if(m=l.match(/my email is (\S+@\S+)/i)) add(facts,"email: "+m[1]);
     if(m=l.match(/my (?:phone )?number is ([+\d][\d\s().-]{6,}\d)/i)) add(facts,"phone number: "+m[1].trim());
     if(m=l.match(/order (?:number |#)?([A-Za-z0-9-]{4,})/i)) add(facts,"order: "+m[1]);
     if(m=l.match(/my ([\w ]+?) (never arrived|was lost|is broken)/i)) add(facts,"issue: "+m[1].trim()+" "+m[2]);
-    if(/thanks,? that worked|all set|resolved/i.test(l)) add(resolved,"resolved: "+l.slice(0,80));
+    if(m=l.match(/charged twice/i)) add(facts,"issue: charged twice");
+    if(/thanks,? that'?s resolved|that'?s resolved/i.test(l)) add(resolved,"resolved: "+l.slice(0,80));
   });
-  agentLines.forEach(l=>{
-    let m;
+  agentLines.forEach(function(l){
+    var m;
     if(m=l.match(/(?:call you back|follow up|get back to you)([^.,;!?]*)/i))
       add(open,"promised follow-up"+(m[1].trim()?": "+m[1].trim():""));
     if(/what is your [^?]+\?$/i.test(l.trim())) add(open,"unanswered: "+l.trim().slice(0,80));
   });
-  const row=(k,v)=>'<div class="brief-line"><span class="k">'+k+'</span> '+(v.length?esc(v.join(" &middot; ")):"&mdash;")+"</div>";
+  function row(k,v){return '<div class="brief-line"><span class="k">'+k+'</span> '+(v.length?esc(v.join(" · ")):"—")+"</div>";}
   document.getElementById("demoOut").innerHTML =
     row("preferences",prefs)+row("facts",facts)+row("open",open)+row("resolved",resolved);
 }
-function resetDemo(){ document.getElementById("demoOut").innerHTML='<span style="color:var(--muted)">Press &ldquo;Process call&rdquo;&hellip;</span>'; }
+function resetDemo(){
+  document.getElementById("demoOut").innerHTML='<span style="color:var(--muted)">Press &ldquo;Process call&rdquo;&hellip;</span>';
+}
+function copyText(t, btn){
+  function done(){
+    var old = btn.textContent; btn.textContent = "copied"; btn.classList.add("done");
+    setTimeout(function(){ btn.textContent = old; btn.classList.remove("done"); }, 1400);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(done, function(){ fallback(); });
+  } else { fallback(); }
+  function fallback(){
+    var ta = document.createElement("textarea");
+    ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch(e){}
+    document.body.removeChild(ta); done();
+  }
+}
+document.addEventListener("DOMContentLoaded", function(){
+  var tx = document.getElementById("tx");
+  tx.value = SAMPLES[0];
+  document.getElementById("btn-run").addEventListener("click", runDemo);
+  document.getElementById("btn-reset").addEventListener("click", resetDemo);
+  Array.prototype.forEach.call(document.querySelectorAll(".sample-btn"), function(b){
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(document.querySelectorAll(".sample-btn"), function(x){x.classList.remove("on");});
+      b.classList.add("on");
+      tx.value = SAMPLES[parseInt(b.getAttribute("data-sample"),10)];
+      resetDemo();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-copy]"), function(b){
+    b.addEventListener("click", function(){ copyText(b.getAttribute("data-copy"), b); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-copy-src]"), function(b){
+    b.addEventListener("click", function(){
+      copyText(document.getElementById(b.getAttribute("data-copy-src")).textContent, b);
+    });
+  });
+  /* scrollspy */
+  var links = Array.prototype.slice.call(document.querySelectorAll(".snav"));
+  var secs = links.map(function(a){ return document.querySelector(a.getAttribute("href")); });
+  function spy(){
+    var y = window.scrollY + 120, cur = 0;
+    secs.forEach(function(s,i){ if(s && s.offsetTop <= y) cur = i; });
+    links.forEach(function(a,i){ a.classList.toggle("on", i === cur); });
+  }
+  window.addEventListener("scroll", spy, {passive:true});
+  spy();
+});
 </script>
 </body>
 </html>

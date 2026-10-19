@@ -1,5 +1,12 @@
 # callrecall-ai
 
+> **This project has been merged into voice-memory — active development
+> continues at <https://github.com/alexwboles/voice-memory>.**
+> This repo is archived and read-only. See
+> [MIGRATION.md](https://github.com/alexwboles/voice-memory/blob/main/MIGRATION.md)
+> for the upgrade guide — your existing store auto-upgrades on load, and
+> `CallRecallMemory` still imports as an alias for `VoiceMemory`.
+
 **Self-hosted voice-agent memory: per-contact caller briefs in one JSON file.**
 
 The free, local, open-source answer to Retell's paid contact-memory feature. After every call, callrecall-ai writes a structured brief for the caller — preferences, known facts, open threads, resolved items (which auto-expire) — and injects it when they call back, so your agent never asks twice. No cloud, no vector DB, no per-call fees. PII redaction is on by default.
